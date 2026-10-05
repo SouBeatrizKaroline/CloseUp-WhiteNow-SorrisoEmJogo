@@ -1,0 +1,11 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const e=require('../js/engine.js');
+const running=()=>({...e.create(),status:'playing',food:{x:3,y:3}});
+test('tooth outline excludes the cleft and root gap',()=>{assert(!e.isPlayable(9,1));assert(!e.isPlayable(9,15));assert(e.isPlayable(7,18));assert(!e.isPlayable(1,8));assert(!e.isPlayable(19,8));});
+test('all possible food positions stay on tooth and outside snake',()=>{const s=e.create();for(let i=0;i<500;i++){const p=e.foodFor(s.snake,()=>i/500);assert(e.isPlayable(p.x,p.y));assert(!s.snake.some(b=>b.x===p.x&&b.y===p.y));}const full=[];for(let x=1;x<=18;x++)for(let y=1;y<=18;y++)if(e.isPlayable(x,y))full.push({x,y});assert.equal(e.foodFor(full),null);});
+test('reverse and multiple turns in one tick are rejected',()=>{const s=running();e.turn(s,'left');assert.equal(s.pending,null);e.turn(s,'up');e.turn(s,'left');e.step(s);assert.deepEqual(s.snake[0],{x:9,y:7});});
+test('leaving the tooth ends game',()=>{const s=running();s.snake=[{x:17,y:5}];e.step(s);assert.equal(s.status,'over');});
+test('collecting grows one segment and increases score',()=>{const s=running();s.food={x:10,y:8};e.step(s);assert.equal(s.score,1);assert.equal(s.snake.length,4);assert(e.isPlayable(s.food.x,s.food.y));});
+test('moving into vacated tail is allowed',()=>{const s=running();s.snake=[{x:4,y:4},{x:4,y:5},{x:5,y:5},{x:5,y:4}];e.step(s);assert.equal(s.status,'playing');});
+test('body collision ends game',()=>{const s=running();s.snake=[{x:4,y:4},{x:5,y:4},{x:5,y:5},{x:4,y:5}];e.step(s);assert.equal(s.status,'over');});
+test('paused state stays unchanged',()=>{const s=running();s.status='paused';const before=JSON.stringify(s);e.step(s);assert.equal(JSON.stringify(s),before);});
+test('twelfth pickup wins and removes food',()=>{const s=running();s.score=e.GOAL-1;s.food={x:10,y:8};e.step(s);assert.equal(s.status,'won');assert.equal(s.food,null);assert.equal(s.score,e.GOAL);e.step(s);assert.equal(s.score,e.GOAL);});
